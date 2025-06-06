@@ -4,7 +4,7 @@ set -euo pipefail
 
 INSTALL_PATH="/usr/local/bin/zype"
 REPO="CX330Blake/ZYPE"
-ARCHIVE_NAME="zyra-linux-x86_64"
+ARCHIVE_NAME="zype-linux-x86_64"
 
 # Ensure curl is installed
 if ! command -v curl &>/dev/null; then
@@ -12,13 +12,13 @@ if ! command -v curl &>/dev/null; then
     exit 1
 fi
 
-# If zyra already exists, remove it
+# If zype already exists, remove it
 if [ -f "$INSTALL_PATH" ]; then
-    echo "[!] zyra already exists at $INSTALL_PATH, removing..."
+    echo "[!] zype already exists at $INSTALL_PATH, removing..."
     sudo rm -f "$INSTALL_PATH"
 fi
 
-echo "[!] Downloading zyra from latest GitHub release..."
+echo "[!] Downloading zype from latest GitHub release..."
 
 # Fetch download URL
 DOWNLOAD_URL=$(curl -s https://api.github.com/repos/${REPO}/releases/latest |
@@ -32,7 +32,7 @@ if [ -z "$DOWNLOAD_URL" ]; then
 fi
 
 # Download to temp file
-TMP_FILE=$(mktemp /tmp/zyra.XXXXXX)
+TMP_FILE=$(mktemp /tmp/zype.XXXXXX)
 curl -L "$DOWNLOAD_URL" -o "$TMP_FILE"
 
 # Move and set permission
@@ -41,9 +41,9 @@ sudo chmod +x "$INSTALL_PATH"
 
 # Validate install
 if [ -x "$INSTALL_PATH" ]; then
-    echo "[+] zyra installed to $INSTALL_PATH"
+    echo "[+] zype installed to $INSTALL_PATH"
     echo "$("$INSTALL_PATH" --version 2>/dev/null || echo unknown)"
 else
-    echo "[-] zyra install failed."
+    echo "[-] zype install failed."
     exit 1
 fi
