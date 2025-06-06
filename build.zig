@@ -32,7 +32,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(lib);
 
     const exe = b.addExecutable(.{
-        .name = "ZYPE",
+        .name = "zype",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
