@@ -1,5 +1,6 @@
 const std = @import("std");
 const key_generator = @import("./key_generator.zig");
+const output = @import("../io/output.zig");
 
 pub const Methods = union(enum) {
     aes: AESConfig,
@@ -26,33 +27,21 @@ const ObfuscationConfig = struct {
     shellcode: []const u8,
 };
 
-pub fn setPayload(allocator: std.mem.Allocator, shellcode: []const u8, method_type: @typeInfo(Methods).Union.tag_type.?) !Methods {
-    const print = std.debug.print;
-
-    print("==========================================\n");
-    print("Setting up payload with method: {s}\n", .{@tagName(method_type)});
-    print("Original shellcode size: {} bytes\n", .{shellcode.len});
+pub fn setPayload(allocator: std.mem.Allocator, shellcode: []const u8, method_type: @typeInfo(Methods).@"union".tag_type.?) !Methods {
+    // try output.printInfo("Setting up payload with method: {s}\n", .{@tagName(method_type)});
+    // try output.printInfo("Original shellcode size: {} bytes\n", .{shellcode.len});
 
     switch (method_type) {
         .aes => {
-            print("Configuring AES-256-CTR encryption...\n");
-
             // Generate AES-256 key and IV
             const key = try key_generator.generateRandomKey(allocator, 32); // AES-256
             const iv = try key_generator.generateRandomKey(allocator, 16); // AES IV
 
             // Create a copy of shellcode for encryption
-            var encrypted_shellcode = try allocator.dupe(u8, shellcode);
+            const encrypted_shellcode = try allocator.dupe(u8, shellcode);
 
             // Encrypt the shellcode
             try aesEncrypt(encrypted_shellcode, key, iv);
-
-            print("✓ AES-256 encryption completed\n");
-            print("Key (32 bytes): ");
-            for (key) |byte| print("{:02X}", .{byte});
-            print("\nIV (16 bytes): ");
-            for (iv) |byte| print("{:02X}", .{byte});
-            print("\nEncrypted payload size: {} bytes\n", .{encrypted_shellcode.len});
 
             return Methods{ .aes = AESConfig{
                 .shellcode = encrypted_shellcode,
@@ -62,21 +51,14 @@ pub fn setPayload(allocator: std.mem.Allocator, shellcode: []const u8, method_ty
         },
 
         .xor => {
-            print("Configuring XOR encryption...\n");
-
             // Generate 16-byte XOR key
-            const key = try generateRandomKey(allocator, 16);
+            const key = try key_generator.generateRandomKey(allocator, 16);
 
             // Create a copy of shellcode for encryption
-            var encrypted_shellcode = try allocator.dupe(u8, shellcode);
+            const encrypted_shellcode = try allocator.dupe(u8, shellcode);
 
             // Encrypt the shellcode
             xor(encrypted_shellcode, key);
-
-            print("✓ XOR encryption completed\n");
-            print("Key (16 bytes): ");
-            for (key) |byte| print("{:02X}", .{byte});
-            print("\nEncrypted payload size: {} bytes\n", .{encrypted_shellcode.len});
 
             return Methods{ .xor = NormalEncryptionConfig{
                 .shellcode = encrypted_shellcode,
@@ -85,21 +67,14 @@ pub fn setPayload(allocator: std.mem.Allocator, shellcode: []const u8, method_ty
         },
 
         .rc4 => {
-            print("Configuring RC4 encryption...\n");
-
-            // Generate 16-byte RC4 key
-            const key = try generateRandomKey(allocator, 16);
+            // Generate 16-byte RC4 key - FIXED: use key_generator module
+            const key = try key_generator.generateRandomKey(allocator, 16);
 
             // Create a copy of shellcode for encryption
-            var encrypted_shellcode = try allocator.dupe(u8, shellcode);
+            const encrypted_shellcode = try allocator.dupe(u8, shellcode);
 
             // Encrypt the shellcode
             rc4(encrypted_shellcode, key);
-
-            print("✓ RC4 encryption completed\n");
-            print("Key (16 bytes): ");
-            for (key) |byte| print("{:02X}", .{byte});
-            print("\nEncrypted payload size: {} bytes\n", .{encrypted_shellcode.len});
 
             return Methods{ .rc4 = NormalEncryptionConfig{
                 .shellcode = encrypted_shellcode,
@@ -108,15 +83,8 @@ pub fn setPayload(allocator: std.mem.Allocator, shellcode: []const u8, method_ty
         },
 
         .ipv4 => {
-            print("Configuring IPv4 address obfuscation...\n");
-
             // For IPv4 obfuscation, store the original shellcode
             const shellcode_copy = try allocator.dupe(u8, shellcode);
-
-            const ipv4_addresses = (shellcode.len + 3) / 4; // 4 bytes per IPv4
-            print("✓ IPv4 obfuscation configured\n");
-            print("Shellcode will be transformed into {} IPv4 addresses\n", .{ipv4_addresses});
-            print("Format: xxx.xxx.xxx.xxx (4 bytes per address)\n");
 
             return Methods{ .ipv4 = ObfuscationConfig{
                 .shellcode = shellcode_copy,
@@ -124,15 +92,8 @@ pub fn setPayload(allocator: std.mem.Allocator, shellcode: []const u8, method_ty
         },
 
         .ipv6 => {
-            print("Configuring IPv6 address obfuscation...\n");
-
             // For IPv6 obfuscation, store the original shellcode
             const shellcode_copy = try allocator.dupe(u8, shellcode);
-
-            const ipv6_addresses = (shellcode.len + 15) / 16; // 16 bytes per IPv6
-            print("✓ IPv6 obfuscation configured\n");
-            print("Shellcode will be transformed into {} IPv6 addresses\n", .{ipv6_addresses});
-            print("Format: xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx (16 bytes per address)\n");
 
             return Methods{ .ipv6 = ObfuscationConfig{
                 .shellcode = shellcode_copy,
@@ -140,15 +101,8 @@ pub fn setPayload(allocator: std.mem.Allocator, shellcode: []const u8, method_ty
         },
 
         .mac => {
-            print("Configuring MAC address obfuscation...\n");
-
             // For MAC obfuscation, store the original shellcode
             const shellcode_copy = try allocator.dupe(u8, shellcode);
-
-            const mac_addresses = (shellcode.len + 5) / 6; // 6 bytes per MAC
-            print("✓ MAC address obfuscation configured\n");
-            print("Shellcode will be transformed into {} MAC addresses\n", .{mac_addresses});
-            print("Format: xx:xx:xx:xx:xx:xx (6 bytes per address)\n");
 
             return Methods{ .mac = ObfuscationConfig{
                 .shellcode = shellcode_copy,
@@ -156,15 +110,8 @@ pub fn setPayload(allocator: std.mem.Allocator, shellcode: []const u8, method_ty
         },
 
         .uuid => {
-            print("Configuring UUID obfuscation...\n");
-
             // For UUID obfuscation, store the original shellcode
             const shellcode_copy = try allocator.dupe(u8, shellcode);
-
-            const uuid_count = (shellcode.len + 15) / 16; // 16 bytes per UUID
-            print("✓ UUID obfuscation configured\n");
-            print("Shellcode will be transformed into {} UUIDs\n", .{uuid_count});
-            print("Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (16 bytes per UUID)\n");
 
             return Methods{ .uuid = ObfuscationConfig{
                 .shellcode = shellcode_copy,
@@ -190,6 +137,7 @@ pub fn cleanupMethod(allocator: std.mem.Allocator, method: Methods) void {
         },
     }
 }
+
 /// This is the second approach to encrypt the payload.
 /// We use a multi-bytes key and iterate each byte as different
 /// key in each iteration.
@@ -214,7 +162,7 @@ pub fn rc4(data: []u8, key: []const u8) void {
 
     // Initialize S-box
     var s: [256]u8 = undefined;
-    for (s, 0..) |*byte, i| {
+    for (&s, 0..) |*byte, i| { // FIXED: Added & to s
         byte.* = @intCast(i);
     }
 
@@ -236,22 +184,30 @@ pub fn rc4(data: []u8, key: []const u8) void {
         byte.* ^= k;
     }
 }
-
 /// AES encryption using CTR mode
 /// data: input data to encrypt (will be modified in-place)
-/// key: AES key (must be 16, 24, or 32 bytes for AES-128, AES-192, or AES-256)
+/// key: AES key (must be 16 or 32 bytes for AES-128 or AES-256)
 /// iv: initialization vector (must be 16 bytes)
 pub fn aesEncrypt(data: []u8, key: []const u8, iv: []const u8) !void {
     if (iv.len != 16) return error.InvalidIVLength;
 
-    const aes = switch (key.len) {
-        16 => std.crypto.core.aes.Aes128,
-        24 => std.crypto.core.aes.Aes192,
-        32 => std.crypto.core.aes.Aes256,
+    switch (key.len) {
+        16 => {
+            const key_array: [16]u8 = key[0..16].*;
+            const ctx = std.crypto.core.aes.Aes128.initEnc(key_array);
+            try aesEncryptWithContext(data, ctx, iv);
+        },
+        32 => {
+            const key_array: [32]u8 = key[0..32].*;
+            const ctx = std.crypto.core.aes.Aes256.initEnc(key_array);
+            try aesEncryptWithContext(data, ctx, iv);
+        },
         else => return error.InvalidKeyLength,
-    };
+    }
+}
 
-    const ctx = aes.initEnc(key);
+/// Generic AES encryption helper that works with any AES context
+fn aesEncryptWithContext(data: []u8, ctx: anytype, iv: []const u8) !void {
     var counter: [16]u8 = undefined;
     @memcpy(&counter, iv);
 
@@ -279,7 +235,6 @@ pub fn aesEncrypt(data: []u8, key: []const u8, iv: []const u8) !void {
         offset += block_size;
     }
 }
-
 /// AES decryption using CTR mode
 /// CTR mode encryption and decryption are the same operation
 pub fn aesDecrypt(data: []u8, key: []const u8, iv: []const u8) !void {
