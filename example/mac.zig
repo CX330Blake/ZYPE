@@ -1,6 +1,5 @@
 const std = @import("std");
-const windows = std.os.windows;
-const WINAPI = windows.WINAPI;
+const net = std.net;
 
 const MAC_ARRAY: [33][]const u8 = [_][]const u8{
     "fc:e8:82:00:00:00",
@@ -40,23 +39,17 @@ const MAC_ARRAY: [33][]const u8 = [_][]const u8{
 const NUMBER_OF_ELEMENTS: usize = 33;
 
 fn macDeobfuscation(mac_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {
-    const ntdll = try windows.kernel32.GetModuleHandleA("NTDLL");
-    const RtlEthernetStringToAddressA = @as(
-        *const fn([*:0]const u8, [*]?[*:0]const u8, [*]u8) callconv(WINAPI) i32,
-        @ptrCast(windows.kernel32.GetProcAddress(ntdll, "RtlEthernetStringToAddressA").?),
-    );
-
     var buffer = try allocator.alloc(u8, mac_array.len * 6);
     var offset: usize = 0;
 
     for (mac_array) |mac| {
-        const c_mac = try allocator.dupeZ(u8, mac);
-        defer allocator.free(c_mac);
-        var terminator: ?[*:0]const u8 = null;
-        const result = RtlEthernetStringToAddressA(c_mac.ptr, &terminator, buffer.ptr + offset);
-        if (result != 0) {
-            return error.RtlEthernetStringToAddressAFailed;
+        var parts = std.mem.splitScalar(u8, mac, ':');
+        var i: usize = 0;
+        while (parts.next()) |part| : (i += 1) {
+            if (i >= 6) return error.InvalidMacFormat;
+            buffer[offset + i] = std.fmt.parseInt(u8, part, 16) catch return error.InvalidHexDigit;
         }
+        if (i != 6) return error.InvalidMacFormat;
         offset += 6;
     }
 

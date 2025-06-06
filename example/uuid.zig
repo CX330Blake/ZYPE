@@ -1,6 +1,4 @@
 const std = @import("std");
-const windows = std.os.windows;
-const WINAPI = windows.WINAPI;
 
 const UUID_ARRAY: [13][]const u8 = [_][]const u8{
     "fce88200-0000-6089-e531-c0648b50308b",
@@ -20,21 +18,26 @@ const UUID_ARRAY: [13][]const u8 = [_][]const u8{
 const NUMBER_OF_ELEMENTS: usize = 13;
 
 fn uuidDeobfuscation(uuid_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {
-    const rpcrt4 = try windows.kernel32.LoadLibraryA("RPCRT4");
-    const UuidFromStringA = @as(
-        *const fn([*:0]const u8, [*]u8) callconv(WINAPI) i32,
-        @ptrCast(windows.kernel32.GetProcAddress(rpcrt4, "UuidFromStringA").?),
-    );
-
     var buffer = try allocator.alloc(u8, uuid_array.len * 16);
     var offset: usize = 0;
 
     for (uuid_array) |uuid| {
-        const c_uuid = try allocator.dupeZ(u8, uuid);
-        defer allocator.free(c_uuid);
-        const result = UuidFromStringA(c_uuid.ptr, buffer.ptr + offset);
-        if (result != 0) {
-            return error.UuidFromStringAFailed;
+        var clean_uuid = std.ArrayList(u8).init(allocator);
+        defer clean_uuid.deinit();
+        
+        // Remove hyphens from UUID
+        for (uuid) |c| {
+            if (c != '-') {
+                try clean_uuid.append(c);
+            }
+        }
+        
+        if (clean_uuid.items.len != 32) return error.InvalidUuidFormat;
+        
+        // Parse hex string to bytes
+        for (0..16) |i| {
+            const hex_pair = clean_uuid.items[i * 2..i * 2 + 2];
+            buffer[offset + i] = std.fmt.parseInt(u8, hex_pair, 16) catch return error.InvalidHexDigit;
         }
         offset += 16;
     }

