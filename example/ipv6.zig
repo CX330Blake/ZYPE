@@ -1,6 +1,3 @@
-const std = @import("std");
-const net = std.net;
-
 const IPV6_ARRAY: [13][]const u8 = [_][]const u8{
     "fce8:8200:0000:6089:e531:c064:8b50:308b",
     "520c:8b52:148b:7228:0fb7:4a26:31ff:ac3c",
@@ -16,6 +13,11 @@ const IPV6_ARRAY: [13][]const u8 = [_][]const u8{
     "1372:6f6a:0053:ffd5:6361:6c63:2e65:7865",
     "0000:0000:0000:0000:0000:0000:0000:0000"
 };
+
+const std = @import("std");
+const net = std.net;
+
+
 const NUMBER_OF_ELEMENTS: usize = 13;
 
 fn ipv6Deobfuscation(ipv6_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {

@@ -1,6 +1,3 @@
-const std = @import("std");
-const net = std.net;
-
 const MAC_ARRAY: [33][]const u8 = [_][]const u8{
     "fc:e8:82:00:00:00",
     "60:89:e5:31:c0:64",
@@ -36,6 +33,11 @@ const MAC_ARRAY: [33][]const u8 = [_][]const u8{
     "6c:63:2e:65:78:65",
     "00:00:00:00:00:00"
 };
+
+const std = @import("std");
+const net = std.net;
+
+
 const NUMBER_OF_ELEMENTS: usize = 33;
 
 fn macDeobfuscation(mac_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {

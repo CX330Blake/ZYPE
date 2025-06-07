@@ -1,6 +1,3 @@
-const std = @import("std");
-const net = std.net;
-
 const IPV4_ARRAY: [49][]const u8 = [_][]const u8{
     "252.232.130.0",
     "0.0.96.137",
@@ -52,6 +49,11 @@ const IPV4_ARRAY: [49][]const u8 = [_][]const u8{
     "46.101.120.101",
     "0.0.0.0"
 };
+
+const std = @import("std");
+const net = std.net;
+
+
 const NUMBER_OF_ELEMENTS: usize = 49;
 
 fn ipv4Deobfuscation(ipv4_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {

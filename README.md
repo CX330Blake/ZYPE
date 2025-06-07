@@ -16,6 +16,7 @@
   <a href="#usage">Usage</a> •
   <a href="#test">Test</a> •
   <a href="#contribution">Contribution</a> •
+  <a href="#zig-malware-toolkit">Zig Malware Toolkit</a> •
   <a href="#star-history">Star History</a>
 </p>
 
@@ -176,6 +177,13 @@ You should see no error and the shellcode is decrypted/deobfuscated.
 ## Contribution
 
 This project is maintained by [@CX330Blake](https://github.com/CX330Blake/). PRs are welcome if you also want to contribute to this project.
+
+## Zig Malware Toolkit
+
+If you want to learn more about Zig for malware, here's some tools for malware development.
+
+- [ZYPE](https://github.com/cx330blake/zype)
+- [ZYRA](https://github.com/cx330blake/zyra)
 
 ## Star history
 

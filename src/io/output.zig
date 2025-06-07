@@ -31,7 +31,7 @@ pub fn printSuccess(comptime format: []const u8, args: anytype) !void {
 pub fn printVersion() !void {
     try printInfo("{s}\n\n", .{banner});
     try printInfo("ZYPE shellcode encryptor v{s}\n", .{version});
-    try printInfo("Copyright (C) 2025 @CX330Blake.\n", .{});
+    try printInfo("Copyright (C) 2025-{} @CX330Blake.\n", .{getCurrentYear()});
     try printInfo("All rights reserved.\n\n", .{});
 }
 
@@ -197,29 +197,69 @@ pub fn printDecodeFunctionality(transform_type: []const u8, array_str: []const u
         try output.printInfo("\n", .{});
         try output.printInfo("const NUMBER_OF_ELEMENTS: usize = {};\n", .{size});
         try output.printInfo("\n", .{});
-        try output.printInfo("fn uuidDeobfuscation(uuid_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {{\n", .{});
-        try output.printInfo("    var buffer = try allocator.alloc(u8, uuid_array.len * 16);\n", .{});
-        try output.printInfo("    var offset: usize = 0;\n", .{});
+        try output.printInfo("// Manual UUID parsing that matches Windows UuidFromStringA behavior\n", .{});
+        try output.printInfo("fn parseUuidManual(uuid_str: []const u8, buffer: []u8) !void {{\n", .{});
+        try output.printInfo("    if (buffer.len < 16) return error.BufferTooSmall;\n", .{});
         try output.printInfo("\n", .{});
-        try output.printInfo("    for (uuid_array) |uuid| {{\n", .{});
-        try output.printInfo("        var clean_uuid = std.ArrayList(u8).init(allocator);\n", .{});
-        try output.printInfo("        defer clean_uuid.deinit();\n", .{});
-        try output.printInfo("        \n", .{});
-        try output.printInfo("        // Remove hyphens from UUID\n", .{});
-        try output.printInfo("        for (uuid) |c| {{\n", .{});
-        try output.printInfo("            if (c != '-') {{\n", .{});
-        try output.printInfo("                try clean_uuid.append(c);\n", .{});
-        try output.printInfo("            }}\n", .{});
+        try output.printInfo("    // UUID format: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX\n", .{});
+        try output.printInfo("    // Split into parts: [8]-[4]-[4]-[4]-[12] = 32 hex chars + 4 hyphens\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    var clean_hex = std.ArrayList(u8).init(std.heap.page_allocator);\n", .{});
+        try output.printInfo("    defer clean_hex.deinit();\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    // Remove hyphens to get 32 hex characters\n", .{});
+        try output.printInfo("    for (uuid_str) |c| {{\n", .{});
+        try output.printInfo("        if (c != '-') {{\n", .{});
+        try output.printInfo("            try clean_hex.append(c);\n", .{});
         try output.printInfo("        }}\n", .{});
-        try output.printInfo("        \n", .{});
-        try output.printInfo("        if (clean_uuid.items.len != 32) return error.InvalidUuidFormat;\n", .{});
-        try output.printInfo("        \n", .{});
-        try output.printInfo("        // Parse hex string to bytes\n", .{});
-        try output.printInfo("        for (0..16) |i| {{\n", .{});
-        try output.printInfo("            const hex_pair = clean_uuid.items[i * 2..i * 2 + 2];\n", .{});
-        try output.printInfo("            buffer[offset + i] = std.fmt.parseInt(u8, hex_pair, 16) catch return error.InvalidHexDigit;\n", .{});
-        try output.printInfo("        }}\n", .{});
-        try output.printInfo("        offset += 16;\n", .{});
+        try output.printInfo("    }}\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    if (clean_hex.items.len != 32) return error.InvalidUuidLength;\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    // Parse UUID components with correct endianness\n", .{});
+        try output.printInfo("    // Windows UUID structure (matches GUID):\n", .{});
+        try output.printInfo("    // - First 4 bytes (data1): Little-endian 32-bit\n", .{});
+        try output.printInfo("    // - Next 2 bytes (data2): Little-endian 16-bit\n", .{});
+        try output.printInfo("    // - Next 2 bytes (data3): Little-endian 16-bit\n", .{});
+        try output.printInfo("    // - Last 8 bytes (data4): Big-endian bytes\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    const hex_chars = clean_hex.items;\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    // Data1 (4 bytes, little-endian)\n", .{});
+        try output.printInfo("    const data1 = try std.fmt.parseInt(u32, hex_chars[0..8], 16);\n", .{});
+        try output.printInfo("    buffer[0] = @intCast(data1 & 0xFF);\n", .{});
+        try output.printInfo("    buffer[1] = @intCast((data1 >> 8) & 0xFF);\n", .{});
+        try output.printInfo("    buffer[2] = @intCast((data1 >> 16) & 0xFF);\n", .{});
+        try output.printInfo("    buffer[3] = @intCast((data1 >> 24) & 0xFF);\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    // Data2 (2 bytes, little-endian)\n", .{});
+        try output.printInfo("    const data2 = try std.fmt.parseInt(u16, hex_chars[8..12], 16);\n", .{});
+        try output.printInfo("    buffer[4] = @intCast(data2 & 0xFF);\n", .{});
+        try output.printInfo("    buffer[5] = @intCast((data2 >> 8) & 0xFF);\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    // Data3 (2 bytes, little-endian)\n", .{});
+        try output.printInfo("    const data3 = try std.fmt.parseInt(u16, hex_chars[12..16], 16);\n", .{});
+        try output.printInfo("    buffer[6] = @intCast(data3 & 0xFF);\n", .{});
+        try output.printInfo("    buffer[7] = @intCast((data3 >> 8) & 0xFF);\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    // Data4 (8 bytes, big-endian - byte by byte)\n", .{});
+        try output.printInfo("    for (0..8) |i| {{\n", .{});
+        try output.printInfo("        const hex_pair = hex_chars[16 + i * 2 .. 16 + i * 2 + 2];\n", .{});
+        try output.printInfo("        buffer[8 + i] = try std.fmt.parseInt(u8, hex_pair, 16);\n", .{});
+        try output.printInfo("    }}\n", .{});
+        try output.printInfo("}}\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("fn uuidDeobfuscation(uuid_array: []const []const u8, allocator: std.mem.Allocator) ![]u8 {{\n", .{});
+        try output.printInfo("    const buffer_size = uuid_array.len * 16;\n", .{});
+        try output.printInfo("    const buffer = try allocator.alloc(u8, buffer_size);\n", .{});
+        try output.printInfo("\n", .{});
+        try output.printInfo("    for (uuid_array, 0..) |uuid_str, i| {{\n", .{});
+        try output.printInfo("        const offset = i * 16;\n", .{});
+        try output.printInfo("        parseUuidManual(uuid_str, buffer[offset .. offset + 16]) catch |err| {{\n", .{});
+        try output.printInfo("            std.debug.print(\"[!] Failed to parse UUID[{{}}]: \\\"{{s}}\\\" - Error: {{}}\\n\", .{{ i, uuid_str, err }});\n", .{});
+        try output.printInfo("            allocator.free(buffer);\n", .{});
+        try output.printInfo("            return err;\n", .{});
+        try output.printInfo("        }};\n", .{});
         try output.printInfo("    }}\n", .{});
         try output.printInfo("\n", .{});
         try output.printInfo("    return buffer;\n", .{});
@@ -383,4 +423,13 @@ pub fn printDecodeFunctionality(transform_type: []const u8, array_str: []const u
     } else {
         try output.printError("[!] Unsupported Type Entered: {s}\n", .{transform_type});
     }
+}
+
+/// Helper
+fn getCurrentYear() i32 {
+    const timestamp = std.time.timestamp();
+    const epoch_seconds = std.time.epoch.EpochSeconds{ .secs = @intCast(timestamp) };
+    const epoch_day = epoch_seconds.getEpochDay();
+    const year_day = epoch_day.calculateYearDay();
+    return year_day.year;
 }
