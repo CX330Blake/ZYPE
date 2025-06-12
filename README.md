@@ -26,7 +26,7 @@
 
 ## What's ZYPE?
 
-ZYPE: Zig Yield Payload Encryptor - Transform your shellcode into undetectable, obfuscated payloads that bypass modern security solutions.
+ZYPE: Zig Your Payload Encryptor - Transform your shellcode into undetectable, obfuscated payloads that bypass modern security solutions.
 
 - ⚡ Lightning Fast: Written in Zig for optimal performance and memory safety
 - 🎯 Multi-Method Obfuscation: Support for AES, RC4, XOR encryption plus MAC/IPv4/IPv6/UUID address obfuscation
